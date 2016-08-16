@@ -1,3 +1,4 @@
 <resources>
-	<string name="app_name">microChrono</string>
+	<string name="app_name">µChrono</string>
+	<string name="press_start">Press Start</string>
 </resources>

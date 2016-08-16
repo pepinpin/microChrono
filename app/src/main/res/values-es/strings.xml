@@ -1,5 +1,5 @@
 <resources>
-	<string name="press_start">Presione Start</string>
+	<string name="press_start">Pulsa Start</string>
 	<string name="wait_message">Espere por favor...</string>
 	<string name="settings_title">Escojer el tiempo (en mn)</string>
 	<string name="settings_set">Validar</string>

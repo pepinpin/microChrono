@@ -32,11 +32,12 @@ tools:context="net.biospherecorp.microchrono.MainActivity">
 
 	android:layout_width="wrap_content"
 	android:layout_height="wrap_content"
-	android:layout_marginBottom="@dimen/activity_vertical_margin"
 
-	app:layout_constraintRight_toRightOf="@+id/liquid_time"
 	app:layout_constraintBottom_toBottomOf="@+id/liquid_time"
-	app:layout_constraintLeft_toLeftOf="@+id/liquid_time"/>
+	app:layout_constraintLeft_toLeftOf="@+id/liquid_time"
+	app:layout_constraintTop_toTopOf="@+id/liquid_time"
+	app:layout_constraintVertical_bias="0.75"
+	android:layout_marginStart="24dp"/>
 
 <android.support.design.widget.FloatingActionButton
 	android:id="@+id/setting_button"
@@ -46,12 +47,13 @@ tools:context="net.biospherecorp.microchrono.MainActivity">
 
 	android:layout_width="wrap_content"
 	android:layout_height="wrap_content"
-	android:layout_marginLeft="@dimen/activity_horizontal_margin"
-	android:layout_marginBottom="@dimen/activity_vertical_margin"
+	android:layout_marginTop="8dp"
+	android:layout_marginStart="32dp"
 
 	app:layout_constraintBottom_toBottomOf="@+id/liquid_time"
 	app:layout_constraintLeft_toLeftOf="@+id/liquid_time"
-	android:layout_marginStart="@dimen/activity_horizontal_margin"/>
+	app:layout_constraintTop_toBottomOf="@+id/start_button"
+	/>
 
 <TextView
 	android:id="@+id/text_time"
@@ -74,10 +76,12 @@ tools:context="net.biospherecorp.microchrono.MainActivity">
 
 	android:layout_width="wrap_content"
 	android:layout_height="wrap_content"
-	android:layout_marginBottom="@dimen/press_start_text_view_bottom_margin"
+	android:layout_marginBottom="8dp"
 
 	app:layout_constraintRight_toRightOf="@+id/liquid_time"
 	app:layout_constraintLeft_toLeftOf="@+id/liquid_time"
 	app:layout_constraintBottom_toBottomOf="@+id/liquid_time"
+
 	/>
+
 </android.support.constraint.ConstraintLayout>

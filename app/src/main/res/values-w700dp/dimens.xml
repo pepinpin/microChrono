@@ -1,0 +1,10 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+	<dimen name="activity_horizontal_margin">42dp</dimen>
+	<dimen name="activity_vertical_margin">42dp</dimen>
+
+	<dimen name="press_start_text_view_bottom_margin">200dp</dimen>
+
+	<dimen name="time_left_text_size">78sp</dimen>
+	<dimen name="press_start_text_size">52sp</dimen>
+</resources>

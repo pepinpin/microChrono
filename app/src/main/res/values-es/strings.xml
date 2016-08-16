@@ -5,4 +5,7 @@
 	<string name="settings_set">Validar</string>
 	<string name="settings_cancel">Cancelar</string>
 	<string name="notification_text">Esta terminando !!</string>
+	<string name="hard_boiled_egg_cooking_time">Huevo duro</string>
+	<string name="boiled_egg_cooking_time">Huevo hervido</string>
+	<string name="soft_boiled_egg_cooking_time">Huevo sancochado</string>
 </resources>

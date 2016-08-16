@@ -48,8 +48,8 @@ public class MainActivity extends AppCompatActivity {
 	// the default time for the timer
 	private static final int DEFAULT_TIME_MN = 3;
 
-	// the position of the default time in the array
-	private static int VALUE_IN_ARRAY_TIME = 2;
+	// the position of the default time value in the array
+	private static int VALUE_IN_ARRAY_TIME = 3;
 
 	// set the variable used to count the minutes
 	private static int COUNT_MINUTE = DEFAULT_TIME_MN;
@@ -306,11 +306,16 @@ public class MainActivity extends AppCompatActivity {
 	private void showNumberPicker(){
 
 		// the array holding the usable values
-		final String[] TIME_ARRAY = new String[99];
+		final String[] TIME_ARRAY = new String[102];
+
+		// add some info about egg cooking
+		TIME_ARRAY[0] = getString(R.string.boiled_egg_cooking_time);
+		TIME_ARRAY[1] = getString(R.string.soft_boiled_egg_cooking_time);
+		TIME_ARRAY[2] = getString(R.string.hard_boiled_egg_cooking_time);
 
 		// fill up the array used by the settings number picker (from 1 to 99)
-		for (int i = 0; i <= 98; i++){
-			TIME_ARRAY[i] = String.valueOf(i + 1);
+		for (int i = 3; i <= 101; i++){
+			TIME_ARRAY[i] = String.valueOf(i - 2); // to deduce the value from the index
 		}
 
 		final AlertDialog.Builder adb = new AlertDialog.Builder(this);
@@ -345,8 +350,23 @@ public class MainActivity extends AppCompatActivity {
 				// store the value chosen (the position in the TIME_ARRAY)
 				VALUE_IN_ARRAY_TIME = np.getValue();
 
-				// store the value chosen (the proper value in mn)
-				COUNT_MINUTE = Integer.valueOf(TIME_ARRAY[VALUE_IN_ARRAY_TIME]);
+				// check if it's a egg cooking time
+				switch (VALUE_IN_ARRAY_TIME){
+					case 0:
+						COUNT_MINUTE = 3;
+						break;
+					case 1:
+						COUNT_MINUTE = 5;
+						break;
+					case 2:
+						COUNT_MINUTE = 10;
+						break;
+
+					// if not
+					default:
+						// store the chosen value (the proper value in mn)
+						COUNT_MINUTE = Integer.valueOf(TIME_ARRAY[VALUE_IN_ARRAY_TIME]);
+				}
 
 				// display the new value in the main TextView
 				TEXT_TIME.get().setText(COUNT_MINUTE + " mn");

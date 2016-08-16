@@ -5,4 +5,7 @@
 	<string name="settings_set">Valider</string>
 	<string name="settings_cancel">Annuler</string>
 	<string name="notification_text">C\'est fini !!</string>
+	<string name="boiled_egg_cooking_time">Oeuf à la coque</string>
+	<string name="soft_boiled_egg_cooking_time">Oeuf mollet</string>
+	<string name="hard_boiled_egg_cooking_time">Oeuf dur</string>
 </resources>

@@ -1,0 +1,7 @@
+<resources>
+	<string name="press_start">Appuyez sur Start</string>
+	<string name="wait_message">Veuillez patienter...</string>
+	<string name="settings_title">Choisir le temps (en mn)</string>
+	<string name="settings_set">Valider</string>
+	<string name="settings_cancel">Annuler</string>
+</resources>

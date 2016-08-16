@@ -1,5 +1,9 @@
 <resources>
-	<string name="app_name">µChrono</string>
+	<string name="app_name" translatable="false">µChrono</string>
 	<string name="press_start">Press Start</string>
-	<string name="notification_text">yeahh ca marche</string>
+	<string name="wait_message">Please Wait...</string>
+	<string name="settings_title">Set the time (in mn)</string>
+	<string name="settings_set">Set</string>
+	<string name="settings_cancel">Cancel</string>
+	<string name="notification_text">Time is Over !!</string>
 </resources>

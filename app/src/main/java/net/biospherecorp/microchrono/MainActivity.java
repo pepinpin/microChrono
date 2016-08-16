@@ -85,6 +85,8 @@ public class MainActivity extends AppCompatActivity {
 		startButton.setBackgroundTintList(ColorStateList.valueOf(COLOR_PRIMARY));
 		settingButton.setBackgroundTintList(ColorStateList.valueOf(COLOR_PRIMARY));
 
+		// get the textView that's says "press start"
+		final TextView pressStart = (TextView) findViewById(R.id.pressStartButton);
 
 		// get the textView showing the time
 		TEXT_TIME = new WeakReference<>((TextView) findViewById(R.id.text_time));
@@ -160,6 +162,9 @@ public class MainActivity extends AppCompatActivity {
 
 		// set a listener on the liquid button
 		LIQUID_BUTTON.get().setPourFinishListener(new LiquidButton.PourFinishListener() {
+
+
+			// if the pouring animation is finished
 			@Override
 			public void onPourFinish() { // if the pouring animation is finished
 
@@ -180,6 +185,9 @@ public class MainActivity extends AppCompatActivity {
 				if (_snackBar != null){
 					_snackBar.dismiss();
 				}
+
+				// hide the "Press Start" textView
+				pressStart.setVisibility(View.VISIBLE);
 			}
 
 			@Override
@@ -306,7 +314,7 @@ public class MainActivity extends AppCompatActivity {
 		final NumberPicker np = new NumberPicker(this);
 
 		// set the title
-		adb.setTitle("Set the time");
+		adb.setTitle(R.string.settings_title);
 
 		// to make sure the soft keyboard doesn't pop up
 		np.setDescendantFocusability(ViewGroup.FOCUS_BLOCK_DESCENDANTS);
@@ -327,7 +335,7 @@ public class MainActivity extends AppCompatActivity {
 		np.setWrapSelectorWheel(true);
 
 		// set the "Set" button
-		adb.setPositiveButton("Set", new DialogInterface.OnClickListener() {
+		adb.setPositiveButton(R.string.settings_set, new DialogInterface.OnClickListener() {
 			@Override
 			public void onClick(DialogInterface dialogInterface, int i) {
 
@@ -346,7 +354,7 @@ public class MainActivity extends AppCompatActivity {
 		});
 
 		// set the "Cancel" button
-		adb.setNegativeButton("Cancel", new DialogInterface.OnClickListener() {
+		adb.setNegativeButton(R.string.settings_cancel, new DialogInterface.OnClickListener() {
 			@Override
 			public void onClick(DialogInterface dialogInterface, int i) {
 

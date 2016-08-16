@@ -1,12 +1,18 @@
 package net.biospherecorp.microchrono;
 
+import android.app.NotificationManager;
+import android.app.PendingIntent;
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.content.res.ColorStateList;
+import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.Vibrator;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
+import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.util.Log;
@@ -31,6 +37,9 @@ public class MainActivity extends AppCompatActivity {
 
 	// is the timer running ?
 	private static boolean IS_RUNNING = false;
+
+	// is timer cancel in progress
+	private static boolean IS_TIMER_CANCELED = false;
 
 	// is the liquid pouring animation running ?
 	private static boolean IS_LIQUID_POURING = false;
@@ -57,6 +66,7 @@ public class MainActivity extends AppCompatActivity {
 	private Thread _thread;
 	private Handler _handler;
 	private Snackbar _snackBar;
+	private Vibrator _vibrator;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -75,8 +85,6 @@ public class MainActivity extends AppCompatActivity {
 		startButton.setBackgroundTintList(ColorStateList.valueOf(COLOR_PRIMARY));
 		settingButton.setBackgroundTintList(ColorStateList.valueOf(COLOR_PRIMARY));
 
-		// get the textView that's says "press start"
-		final TextView pressStart = (TextView) findViewById(R.id.pressStartButton);
 
 		// get the textView showing the time
 		TEXT_TIME = new WeakReference<>((TextView) findViewById(R.id.text_time));
@@ -114,33 +122,20 @@ public class MainActivity extends AppCompatActivity {
 					// store the conversion of minute to seconds
 					TIME_IN_SEC = COUNT_MINUTE * 60f;
 
-					// change the image and the background color of the startButton
-					startButton.setBackgroundTintList(ColorStateList.valueOf(COLOR_SECONDARY));
-					startButton.setImageResource(android.R.drawable.ic_delete);
+					// initialize the Buttons
+					initButtons();
 
-					// disable the setting button
-					settingButton.setEnabled(false);
-
-					// hide the "Press Start" textView
-					pressStart.setVisibility(View.GONE);
-
-					// set the main textView
-					TEXT_TIME.get().setText(COUNT_MINUTE + " mn");
-
-					// setup the liquid button
-					//
-					// say that the button stays filled up after the animation is complete
-					LIQUID_BUTTON.get().setFillAfter(true);
-					// start the pouring animation
-					LIQUID_BUTTON.get().startPour();
-					// say that the animation is ongoing
-					IS_LIQUID_POURING = true;
+					// initialize the TextViews
+					initTextViews();
 
 					// start the timer's thread
 					_thread = new Thread(new ChronoMinute());
 					_thread.start();
 
 				}else{
+
+					// only true when this button is pressed
+					IS_TIMER_CANCELED = true;
 
 					// say that's not running anymore
 					IS_RUNNING = false;
@@ -154,7 +149,7 @@ public class MainActivity extends AppCompatActivity {
 					}
 
 					// display a snackBar asking the user to wait the end of the animation
-					_snackBar = Snackbar.make(view, "Please Wait...", Snackbar.LENGTH_INDEFINITE);
+					_snackBar = Snackbar.make(view, R.string.wait_message, Snackbar.LENGTH_INDEFINITE);
 					_snackBar.show();
 
 					// clear the main TextView
@@ -165,29 +160,26 @@ public class MainActivity extends AppCompatActivity {
 
 		// set a listener on the liquid button
 		LIQUID_BUTTON.get().setPourFinishListener(new LiquidButton.PourFinishListener() {
-
-
-			// if the pouring animation is finished
 			@Override
-			public void onPourFinish() {
+			public void onPourFinish() { // if the pouring animation is finished
 
-				// say that ity's finished
+				// say that it's finished
 				IS_LIQUID_POURING = false;
 
-				// changfe the start button background color AND image
-				startButton.setBackgroundTintList(ColorStateList.valueOf(COLOR_PRIMARY));
-				startButton.setImageResource(android.R.drawable.ic_media_play);
+				// vibrate, notify and ring to say
+				// that the time is over
+				notifyTimerFinished();
 
-				// re enabled the settings button
-				settingButton.setEnabled(true);
+				// resets the buttons state
+				resetButtons();
+
+				// reset the textViews
+				resetTextViews();
 
 				// if the snackBar is visible, dismiss it
 				if (_snackBar != null){
 					_snackBar.dismiss();
 				}
-
-				// hide the "Press Start" textView
-				pressStart.setVisibility(View.VISIBLE);
 			}
 
 			@Override
@@ -195,6 +187,107 @@ public class MainActivity extends AppCompatActivity {
 				// nothing here
 			}
 		});
+	}
+
+
+	private void initButtons(){
+
+		// change the image and the background color of the startButton
+		startButton.setBackgroundTintList(ColorStateList.valueOf(COLOR_SECONDARY));
+		startButton.setImageResource(android.R.drawable.ic_delete);
+
+		// disable the setting button
+		settingButton.setEnabled(false);
+
+		// setup the liquid button
+		//
+		// say that the button stays filled up after the animation is complete
+		LIQUID_BUTTON.get().setFillAfter(true);
+		// start the pouring animation
+		LIQUID_BUTTON.get().startPour();
+		// say that the animation is ongoing
+		IS_LIQUID_POURING = true;
+	}
+
+	private void initTextViews(){
+
+		// hide the "Press Start" textView
+		// get the textView that's says "press start"
+		TextView pressStart = (TextView) findViewById(R.id.pressStartButton);
+		pressStart.setVisibility(View.GONE);
+
+		// set the main textView
+		TEXT_TIME.get().setText(COUNT_MINUTE + " mn");
+	}
+
+	private void resetButtons(){
+
+		// change the start button background color AND image
+		startButton.setBackgroundTintList(ColorStateList.valueOf(COLOR_PRIMARY));
+		startButton.setImageResource(android.R.drawable.ic_media_play);
+
+		// re enabled the settings button
+		settingButton.setEnabled(true);
+	}
+
+	private void resetTextViews(){
+
+		// hide the "Press Start" textView
+		// get the textView that's says "press start"
+		TextView pressStart = (TextView) findViewById(R.id.pressStartButton);
+		pressStart.setVisibility(View.VISIBLE);
+
+	}
+
+
+	// Method taking care of all the post process
+	// when time is over, it rings, vibrates...
+	//
+	// only called by the onPourFinish callback
+	private void notifyTimerFinished(){
+
+		// if the onFinishPour hasn't been triggered
+		// by the cancel button
+		if (!IS_TIMER_CANCELED){
+
+		// VIBRATE
+			// get the vibrator
+			_vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+			_vibrator.vibrate(3000);
+
+		// NOTIFICATION
+			Intent intent = new Intent(this, MainActivity.class);
+			PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+			NotificationCompat.Builder notification =
+					new NotificationCompat.Builder(this)
+							.setSmallIcon(R.drawable.ic_notification_microchrono)
+							.setContentTitle(getResources().getString(R.string.app_name))
+							.setContentText(getString(R.string.notification_text))
+							.setContentIntent(pendingIntent);
+
+			NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+			manager.notify(1, notification.build());
+
+
+		// PLAY SOUND
+			MediaPlayer player = MediaPlayer.create(this,
+					R.raw.kitchen_timer_ringtone);
+			player.start();
+
+			try {
+				Thread.sleep(3000);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+
+			player.stop();
+			player.release();
+		}else{
+			IS_TIMER_CANCELED = false;
+		}
+
+
 	}
 
 
@@ -363,7 +456,7 @@ public class MainActivity extends AppCompatActivity {
 					// calculate if there is a minute change
 					if(msg.arg1 % 60 == 0){
 
-						// if there is, decreament the minute count
+						// if there is, decrement the minute count
 						COUNT_MINUTE -= 1;
 					}
 

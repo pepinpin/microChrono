@@ -2,18 +2,32 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 		  package="net.biospherecorp.microchrono">
 
+	<uses-permission
+		android:name="android.permission.VIBRATE"
+		/>
+
+	<uses-feature
+		android:name="android.permission.VIBRATE"
+		android:required="false"
+		/>
+
 	<application
 		android:allowBackup="true"
 		android:icon="@mipmap/ic_launcher"
 		android:label="@string/app_name"
-		android:theme="@style/Theme.AppCompat.Light.NoActionBar">
-		<activity android:name=".MainActivity"
-				  android:screenOrientation="portrait">
+		android:theme="@style/Theme.AppCompat.Light.NoActionBar"
+		>
+		<activity
+			android:name=".MainActivity"
+			android:screenOrientation="portrait"
+			android:launchMode="singleTop">
+
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN"/>
 
 				<category android:name="android.intent.category.LAUNCHER"/>
 			</intent-filter>
+
 		</activity>
 	</application>
 

@@ -1,4 +1,5 @@
 <resources>
 	<string name="app_name">µChrono</string>
 	<string name="press_start">Press Start</string>
+	<string name="notification_text">yeahh ca marche</string>
 </resources>

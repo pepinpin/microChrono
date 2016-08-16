@@ -35,10 +35,10 @@ public class MainActivity extends AppCompatActivity {
 	private static WeakReference<LiquidButton> LIQUID_BUTTON;
 	private static WeakReference<TextView> TEXT_TIME;
 
-	// is the timer running ?
+	// is the timer actually running ?
 	private static boolean IS_RUNNING = false;
 
-	// is timer cancel in progress
+	// has the cancel button been pressed
 	private static boolean IS_TIMER_CANCELED = false;
 
 	// is the liquid pouring animation running ?
@@ -59,6 +59,9 @@ public class MainActivity extends AppCompatActivity {
 	// The colors used by the buttons
 	private static int COLOR_PRIMARY, COLOR_SECONDARY;
 
+	// the notification Time
+	private static final int NOTIFICATION_TIME = 2000; // in ms
+
 	// the floating Action buttons
 	private FloatingActionButton startButton;
 	private FloatingActionButton settingButton;
@@ -66,7 +69,6 @@ public class MainActivity extends AppCompatActivity {
 	private Thread _thread;
 	private Handler _handler;
 	private Snackbar _snackBar;
-	private Vibrator _vibrator;
 
 	@Override
 	protected void onCreate(Bundle savedInstanceState) {
@@ -145,12 +147,12 @@ public class MainActivity extends AppCompatActivity {
 					// trigger the "finish pouring" animation
 					LIQUID_BUTTON.get().finishPour();
 
-					// if the thread is still live, stop it
+					// if the thread is still alive, stop it
 					if (!_thread.isInterrupted()){
 						_thread.interrupt();
 					}
 
-					// display a snackBar asking the user to wait the end of the animation
+					// display a snackBar asking the user to wait for the end of the animation
 					_snackBar = Snackbar.make(view, R.string.wait_message, Snackbar.LENGTH_INDEFINITE);
 					_snackBar.show();
 
@@ -162,7 +164,6 @@ public class MainActivity extends AppCompatActivity {
 
 		// set a listener on the liquid button
 		LIQUID_BUTTON.get().setPourFinishListener(new LiquidButton.PourFinishListener() {
-
 
 			// if the pouring animation is finished
 			@Override
@@ -244,7 +245,6 @@ public class MainActivity extends AppCompatActivity {
 		// get the textView that's says "press start"
 		TextView pressStart = (TextView) findViewById(R.id.pressStartButton);
 		pressStart.setVisibility(View.VISIBLE);
-
 	}
 
 
@@ -254,14 +254,14 @@ public class MainActivity extends AppCompatActivity {
 	// only called by the onPourFinish callback
 	private void notifyTimerFinished(){
 
-		// if the onFinishPour hasn't been triggered
-		// by the cancel button
+		// if  triggered by the thread ending normally
+		// (not by the cancel button)
 		if (!IS_TIMER_CANCELED){
 
 		// VIBRATE
 			// get the vibrator
-			_vibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
-			_vibrator.vibrate(3000);
+			Vibrator mVibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+			mVibrator.vibrate(NOTIFICATION_TIME);
 
 		// NOTIFICATION
 			Intent intent = new Intent(this, MainActivity.class);
@@ -281,21 +281,21 @@ public class MainActivity extends AppCompatActivity {
 		// PLAY SOUND
 			MediaPlayer player = MediaPlayer.create(this,
 					R.raw.kitchen_timer_ringtone);
+			player.setVolume(0.7f, 0.7f);
 			player.start();
 
 			try {
-				Thread.sleep(3000);
+				Thread.sleep(NOTIFICATION_TIME);
 			} catch (InterruptedException e) {
 				e.printStackTrace();
 			}
 
 			player.stop();
 			player.release();
+
 		}else{
 			IS_TIMER_CANCELED = false;
 		}
-
-
 	}
 
 
@@ -305,8 +305,8 @@ public class MainActivity extends AppCompatActivity {
 		// the array holding the usable values
 		final String[] TIME_ARRAY = new String[99];
 
-		// fill up the array used by the settings number picker (from 0 to 99)
-		for (int i = 0; i < 99; i++){
+		// fill up the array used by the settings number picker (from 1 to 99)
+		for (int i = 0; i <= 98; i++){
 			TIME_ARRAY[i] = String.valueOf(i + 1);
 		}
 
@@ -328,7 +328,7 @@ public class MainActivity extends AppCompatActivity {
 		// set the max index in the Wheel
 		np.setMaxValue(TIME_ARRAY.length -1);
 
-		// some default value position from the value set of values to display
+		// some default value
 		np.setValue(VALUE_IN_ARRAY_TIME);
 
 		// does the wheel wrap around
@@ -354,7 +354,7 @@ public class MainActivity extends AppCompatActivity {
 		});
 
 		// set the "Cancel" button
-		adb.setNegativeButton(R.string.settings_cancel, new DialogInterface.OnClickListener() {
+		adb.setNeutralButton(R.string.settings_cancel, new DialogInterface.OnClickListener() {
 			@Override
 			public void onClick(DialogInterface dialogInterface, int i) {
 

@@ -4,4 +4,5 @@
 	<string name="settings_title">Choisir le temps (en mn)</string>
 	<string name="settings_set">Valider</string>
 	<string name="settings_cancel">Annuler</string>
+	<string name="notification_text">C\'est fini !!</string>
 </resources>

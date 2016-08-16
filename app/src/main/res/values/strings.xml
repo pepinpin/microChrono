@@ -5,5 +5,5 @@
 	<string name="settings_title">Set the time (in mn)</string>
 	<string name="settings_set">Set</string>
 	<string name="settings_cancel">Cancel</string>
-	<string name="notification_text">Time is Over !!</string>
+	<string name="notification_text">Time is Up !!</string>
 </resources>

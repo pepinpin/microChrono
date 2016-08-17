@@ -70,7 +70,7 @@ tools:context="net.biospherecorp.microchrono.MainActivity">
 	/>
 
 <TextView
-	android:id="@+id/pressStartButton"
+	android:id="@+id/text_secondary"
 	android:text="@string/press_start"
 	android:textSize="@dimen/press_start_text_size"
 

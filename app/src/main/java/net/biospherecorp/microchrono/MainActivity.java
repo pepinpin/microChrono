@@ -35,6 +35,7 @@ public class MainActivity extends AppCompatActivity {
 	// variable will leak the context, hence the use of a WeakReference
 	private static WeakReference<LiquidButton> LIQUID_BUTTON;
 	private static WeakReference<TextView> TEXT_TIME;
+	private static WeakReference<TextView> TEXT_SECONDARY;
 
 	// is the timer actually running ?
 	private static boolean IS_RUNNING = false;
@@ -46,7 +47,7 @@ public class MainActivity extends AppCompatActivity {
 	private static boolean IS_LIQUID_POURING = false;
 
 	// the default time for the timer
-	private static final int DEFAULT_TIME_MN = 3;
+	private static final int DEFAULT_TIME_MN = 1;
 
 	// the position of the default time value in the array
 	private static int VALUE_IN_ARRAY_TIME = 3;
@@ -91,7 +92,7 @@ public class MainActivity extends AppCompatActivity {
 		settingButton.setBackgroundTintList(ColorStateList.valueOf(COLOR_PRIMARY));
 
 		// get the textView that's says "press start"
-		final TextView pressStart = (TextView) findViewById(R.id.pressStartButton);
+		TEXT_SECONDARY = new WeakReference<>((TextView) findViewById(R.id.text_secondary));
 
 		// get the textView showing the time
 		TEXT_TIME = new WeakReference<>((TextView) findViewById(R.id.text_time));
@@ -190,8 +191,8 @@ public class MainActivity extends AppCompatActivity {
 					_snackBar.dismiss();
 				}
 
-				// hide the "Press Start" textView
-				pressStart.setVisibility(View.VISIBLE);
+				// hide the secondary textView
+				TEXT_SECONDARY.get().setVisibility(View.VISIBLE);
 			}
 
 			@Override
@@ -225,7 +226,7 @@ public class MainActivity extends AppCompatActivity {
 
 		// hide the "Press Start" textView
 		// get the textView that's says "press start"
-		TextView pressStart = (TextView) findViewById(R.id.pressStartButton);
+		TextView pressStart = (TextView) findViewById(R.id.text_secondary);
 		pressStart.setVisibility(View.GONE);
 
 		// set the main textView
@@ -244,10 +245,9 @@ public class MainActivity extends AppCompatActivity {
 
 	private void resetTextViews(){
 
-		// hide the "Press Start" textView
+		// hide the secondary textView
 		// get the textView that's says "press start"
-		TextView pressStart = (TextView) findViewById(R.id.pressStartButton);
-		pressStart.setVisibility(View.VISIBLE);
+		TEXT_SECONDARY.get().setVisibility(View.VISIBLE);
 	}
 
 
@@ -260,6 +260,9 @@ public class MainActivity extends AppCompatActivity {
 		// if  triggered by the thread ending normally
 		// (not by the cancel button)
 		if (!IS_TIMER_CANCELED){
+
+		// TEXT
+			TEXT_SECONDARY.get().setText(R.string.notification_text);
 
 		// VIBRATE
 			// get the vibrator
@@ -284,7 +287,7 @@ public class MainActivity extends AppCompatActivity {
 		// PLAY SOUND
 			MediaPlayer player = MediaPlayer.create(this,
 					R.raw.kitchen_timer_ringtone);
-			player.setVolume(0.7f, 0.7f);
+			player.setVolume(0.8f, 0.8f);
 			player.start();
 
 			try {
@@ -296,8 +299,13 @@ public class MainActivity extends AppCompatActivity {
 			player.stop();
 			player.release();
 
+		// if triggered by the cancel button
 		}else{
+			// reset the variable to false
 			IS_TIMER_CANCELED = false;
+
+			// display the "Press Start" text
+			TEXT_SECONDARY.get().setText(R.string.press_start);
 		}
 	}
 
@@ -389,7 +397,7 @@ public class MainActivity extends AppCompatActivity {
 		// instantiate a new layout for the AlertDialog
 		final FrameLayout parent = new FrameLayout(this);
 
-		// set it up
+		// set it up with the number picker
 		parent.addView(np, new FrameLayout.LayoutParams(
 				FrameLayout.LayoutParams.WRAP_CONTENT,
 				FrameLayout.LayoutParams.WRAP_CONTENT,

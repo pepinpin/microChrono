@@ -27,10 +27,6 @@ Available for free on Google Play :
 NO ADS & OPEN SOURCE
 
 
-Code available @ Github :
-
-https://github.com/pepinpin/microChrono
-
 ---
 
 LiquidButton by Yifei Gao @ GitHub :

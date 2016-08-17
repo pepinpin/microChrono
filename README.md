@@ -1,7 +1,7 @@
 # microChrono
 ![GitHub Logo](/app/src/main/res/mipmap-xxxhdpi/ic_launcher.png)
 
-# microMorse (µMorse)
+# µChrono (microMorse)
 simple &amp; multilingual Morse code coder/sender/decoder for Android powered devices (phones and tablets).
 
 Available for free on Google Play :

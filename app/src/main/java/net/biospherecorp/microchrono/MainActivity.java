@@ -16,8 +16,8 @@ import android.support.design.widget.Snackbar;
 import android.support.v4.app.NotificationCompat;
 import android.support.v7.app.AlertDialog;
 import android.support.v7.app.AppCompatActivity;
-import android.util.Log;
 import android.view.Gravity;
+import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.FrameLayout;
@@ -62,7 +62,7 @@ public class MainActivity extends AppCompatActivity {
 	private static int COLOR_PRIMARY, COLOR_SECONDARY;
 
 	// the notification Time
-	private static final int NOTIFICATION_TIME = 2000; // in ms
+	private static final int NOTIFICATION_TIME = 2500; // in ms
 
 	// the floating Action buttons
 	private FloatingActionButton startButton;
@@ -394,6 +394,36 @@ public class MainActivity extends AppCompatActivity {
 			}
 		});
 
+		// this listener is set to allow proper navigation on TVs (with Dpad)
+		adb.setOnKeyListener(new DialogInterface.OnKeyListener() {
+			@Override
+			public boolean onKey(DialogInterface dialogInterface, int i, KeyEvent keyEvent) {
+
+				// if key is released (action up)
+				if (keyEvent.getAction() == KeyEvent.ACTION_UP){
+
+					// check fot the keyCode
+					switch(keyEvent.getKeyCode()){
+
+						// if it's up
+						case KeyEvent.KEYCODE_DPAD_UP:
+							// scroll the wheel upwards
+							np.setValue(np.getValue() - 1);
+							return true;
+						// if it's down
+						case KeyEvent.KEYCODE_DPAD_DOWN:
+							// scroll the wheel downwards
+							np.setValue(np.getValue() + 1);
+							return true;
+						default:
+							return false;
+					}
+				}
+
+				return false;
+			}
+		});
+
 		// instantiate a new layout for the AlertDialog
 		final FrameLayout parent = new FrameLayout(this);
 
@@ -432,7 +462,8 @@ public class MainActivity extends AppCompatActivity {
 				// get a new message from the pool
 				message = Message.obtain();
 
-				Log.w("seconds : ", ""+ seconds);
+				// debug only
+//				Log.w("seconds : ", ""+ seconds);
 
 				try {
 					Thread.sleep(1000); // sleep for 1 seconds

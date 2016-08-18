@@ -31,20 +31,15 @@ import java.lang.ref.WeakReference;
 public class MainActivity extends AppCompatActivity {
 
 	// this fields need to be static to be usable by the handler
-	// but putting a class needing the Context in a HardReference static
+	//
+	// Putting a class needing the Context in a HardReference static
 	// variable will leak the context, hence the use of a WeakReference
 	private static WeakReference<LiquidButton> LIQUID_BUTTON;
 	private static WeakReference<TextView> TEXT_TIME;
 	private static WeakReference<TextView> TEXT_SECONDARY;
 
-	// is the timer actually running ?
-	private static boolean IS_RUNNING = false;
-
-	// has the cancel button been pressed
-	private static boolean IS_TIMER_CANCELED = false;
-
-	// is the liquid pouring animation running ?
-	private static boolean IS_LIQUID_POURING = false;
+	// the notification Time
+	private static final int NOTIFICATION_TIME = 2500; // in ms
 
 	// the default time for the timer
 	private static final int DEFAULT_TIME_MN = 1;
@@ -58,15 +53,20 @@ public class MainActivity extends AppCompatActivity {
 	// variable to hold the time in seconds
 	private static float TIME_IN_SEC;
 
-	// The colors used by the buttons
-	private static int COLOR_PRIMARY, COLOR_SECONDARY;
+	// is the timer actually running ?
+	private static boolean IS_RUNNING = false;
 
-	// the notification Time
-	private static final int NOTIFICATION_TIME = 2500; // in ms
+
+
+
+	// has the cancel button been pressed
+	private boolean _isCanceledByUser = false;
+
+	// The colors used by the buttons
+	private int _colorPrimary, _colorSecondary;
 
 	// the floating Action buttons
-	private FloatingActionButton startButton;
-	private FloatingActionButton settingButton;
+	private FloatingActionButton _startButton, _settingButton;
 
 	private Thread _thread;
 	private Handler _handler;
@@ -77,37 +77,42 @@ public class MainActivity extends AppCompatActivity {
 		super.onCreate(savedInstanceState);
 		setContentView(R.layout.activity_main);
 
+		// lock the screen orientation when the app is launched
+		// (to compensate for the artifact that appears with
+		// the liquid button on orientation change :/ )
 		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
 
-		// get the colors
-		COLOR_PRIMARY = getResources().getColor(R.color.colorPrimary);
-		COLOR_SECONDARY = getResources().getColor(R.color.colorAccent);
-
-		// get the buttons from the view
-		startButton = (FloatingActionButton) findViewById(R.id.start_button);
-		settingButton = (FloatingActionButton) findViewById(R.id.setting_button);
-
-		// set the buttons background colors
-		startButton.setBackgroundTintList(ColorStateList.valueOf(COLOR_PRIMARY));
-		settingButton.setBackgroundTintList(ColorStateList.valueOf(COLOR_PRIMARY));
-
-		// get the textView that's says "press start"
+		// get the second textView
 		TEXT_SECONDARY = new WeakReference<>((TextView) findViewById(R.id.text_secondary));
 
 		// get the textView showing the time
 		TEXT_TIME = new WeakReference<>((TextView) findViewById(R.id.text_time));
 
+		// get the liquidButton
+		LIQUID_BUTTON = new WeakReference<>((LiquidButton) MainActivity.this.findViewById(R.id.liquid_time));
+
+
+
 		// set the time with the default value
 		TEXT_TIME.get().setText(DEFAULT_TIME_MN + " mn");
 
-		// get the liquidButton
-		LIQUID_BUTTON = new WeakReference<>((LiquidButton) MainActivity.this.findViewById(R.id.liquid_time));
+		// get the colors
+		_colorPrimary = getResources().getColor(R.color.colorPrimary);
+		_colorSecondary = getResources().getColor(R.color.colorAccent);
+
+		// get the buttons from the view
+		_startButton = (FloatingActionButton) findViewById(R.id.start_button);
+		_settingButton = (FloatingActionButton) findViewById(R.id.setting_button);
+
+		// set the buttons background colors
+		_startButton.setBackgroundTintList(ColorStateList.valueOf(_colorPrimary));
+		_settingButton.setBackgroundTintList(ColorStateList.valueOf(_colorPrimary));
 
 		// instantiate the handler
 		_handler = new mHandler();
 
 		// the setting section
-		settingButton.setOnClickListener(new View.OnClickListener() {
+		_settingButton.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View view) {
 				// show the alertDialog &
@@ -116,13 +121,14 @@ public class MainActivity extends AppCompatActivity {
 			}
 		});
 
+
 		// the start button
-		startButton.setOnClickListener(new View.OnClickListener() {
+		_startButton.setOnClickListener(new View.OnClickListener() {
 			@Override
 			public void onClick(View view) {
 
 				// if the timer AND the liquid animations aren't running
-				if (!IS_RUNNING && !IS_LIQUID_POURING){
+				if (!IS_RUNNING){
 
 					// say that's running
 					IS_RUNNING = true;
@@ -140,64 +146,70 @@ public class MainActivity extends AppCompatActivity {
 					_thread = new Thread(new ChronoMinute());
 					_thread.start();
 
-				}else{
+				}else if (!_isCanceledByUser){
 
 					// only true when this button is pressed
-					IS_TIMER_CANCELED = true;
-
-					// say that's not running anymore
-					IS_RUNNING = false;
-
-					// trigger the "finish pouring" animation
-					LIQUID_BUTTON.get().finishPour();
+					// while a timer is in progress
+					_isCanceledByUser = true;
 
 					// if the thread is still alive, stop it
 					if (!_thread.isInterrupted()){
 						_thread.interrupt();
 					}
 
+					// clear the main TextView
+					TEXT_TIME.get().setVisibility(View.INVISIBLE);
+
+					// trigger the "finish pouring" animation
+					LIQUID_BUTTON.get().finishPour();
+
 					// display a snackBar asking the user to wait for the end of the animation
 					_snackBar = Snackbar.make(view, R.string.wait_message, Snackbar.LENGTH_INDEFINITE);
 					_snackBar.show();
-
-					// clear the main TextView
-					TEXT_TIME.get().setText("");
 				}
 			}
 		});
 
+
+
 		// set a listener on the liquid button
 		LIQUID_BUTTON.get().setPourFinishListener(new LiquidButton.PourFinishListener() {
 
-			// if the pouring animation is finished
 			@Override
-			public void onPourFinish() { // if the pouring animation is finished
-
-				// say that it's finished
-				IS_LIQUID_POURING = false;
-
-				// vibrate, notify and ring to say
-				// that the time is over
-				notifyTimerFinished();
+			public void onPourFinish() { // when the pouring animation is finished
 
 				// resets the buttons state
 				resetButtons();
 
-				// reset the textViews
-				resetTextViews();
+				// reset the UI (textViews & snackBar)
+				resetUI();
 
-				// if the snackBar is visible, dismiss it
-				if (_snackBar != null){
-					_snackBar.dismiss();
-				}
-
-				// hide the secondary textView
-				TEXT_SECONDARY.get().setVisibility(View.VISIBLE);
+				// it's not running anymore
+				IS_RUNNING = false;
 			}
 
 			@Override
 			public void onProgressUpdate(float progress) {
-				// nothing here
+
+				if (progress >= 1f){
+
+					if (!_isCanceledByUser){
+
+						// Change the textView (cannot be done from the thread)
+						TEXT_SECONDARY.get().setText(R.string.notification_text);
+
+						Thread notifyThread = new Thread(new NotifyTimeIsUp());
+						notifyThread.start();
+
+					}else{
+
+						// reset the variable to false
+						_isCanceledByUser = false;
+
+						// display the "Press Start" text
+						TEXT_SECONDARY.get().setText(R.string.press_start);
+					}
+				}
 			}
 		});
 	}
@@ -205,12 +217,12 @@ public class MainActivity extends AppCompatActivity {
 
 	private void initButtons(){
 
-		// change the image and the background color of the startButton
-		startButton.setBackgroundTintList(ColorStateList.valueOf(COLOR_SECONDARY));
-		startButton.setImageResource(android.R.drawable.ic_delete);
+		// change the image and the background color of the _startButton
+		_startButton.setBackgroundTintList(ColorStateList.valueOf(_colorSecondary));
+		_startButton.setImageResource(android.R.drawable.ic_delete);
 
 		// disable the setting button
-		settingButton.setEnabled(false);
+		_settingButton.setEnabled(false);
 
 		// setup the liquid button
 		//
@@ -218,95 +230,38 @@ public class MainActivity extends AppCompatActivity {
 		LIQUID_BUTTON.get().setFillAfter(true);
 		// start the pouring animation
 		LIQUID_BUTTON.get().startPour();
-		// say that the animation is ongoing
-		IS_LIQUID_POURING = true;
 	}
 
 	private void initTextViews(){
 
-		// hide the "Press Start" textView
-		// get the textView that's says "press start"
-		TextView pressStart = (TextView) findViewById(R.id.text_secondary);
-		pressStart.setVisibility(View.GONE);
-
+		// show the main TextView
+		TEXT_TIME.get().setVisibility(View.VISIBLE);
 		// set the main textView
 		TEXT_TIME.get().setText(COUNT_MINUTE + " mn");
+
+		// hide the secondary textView
+		TEXT_SECONDARY.get().setVisibility(View.INVISIBLE);
 	}
 
 	private void resetButtons(){
 
 		// change the start button background color AND image
-		startButton.setBackgroundTintList(ColorStateList.valueOf(COLOR_PRIMARY));
-		startButton.setImageResource(android.R.drawable.ic_media_play);
+		_startButton.setBackgroundTintList(ColorStateList.valueOf(_colorPrimary));
+		_startButton.setImageResource(android.R.drawable.ic_media_play);
 
 		// re enabled the settings button
-		settingButton.setEnabled(true);
+		_settingButton.setEnabled(true);
 	}
 
-	private void resetTextViews(){
+	private void resetUI(){
 
-		// hide the secondary textView
-		// get the textView that's says "press start"
-		TEXT_SECONDARY.get().setVisibility(View.VISIBLE);
-	}
-
-
-	// Method taking care of all the post process
-	// when time is over, it rings, vibrates...
-	//
-	// only called by the onPourFinish callback
-	private void notifyTimerFinished(){
-
-		// if  triggered by the thread ending normally
-		// (not by the cancel button)
-		if (!IS_TIMER_CANCELED){
-
-		// TEXT
-			TEXT_SECONDARY.get().setText(R.string.notification_text);
-
-		// VIBRATE
-			// get the vibrator
-			Vibrator mVibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
-			mVibrator.vibrate(NOTIFICATION_TIME);
-
-		// NOTIFICATION
-			Intent intent = new Intent(this, MainActivity.class);
-			PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
-
-			NotificationCompat.Builder notification =
-					new NotificationCompat.Builder(this)
-							.setSmallIcon(R.drawable.ic_notification_microchrono)
-							.setContentTitle(getResources().getString(R.string.app_name))
-							.setContentText(getString(R.string.notification_text))
-							.setContentIntent(pendingIntent);
-
-			NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
-			manager.notify(1, notification.build());
-
-
-		// PLAY SOUND
-			MediaPlayer player = MediaPlayer.create(this,
-					R.raw.kitchen_timer_ringtone);
-			player.setVolume(0.8f, 0.8f);
-			player.start();
-
-			try {
-				Thread.sleep(NOTIFICATION_TIME);
-			} catch (InterruptedException e) {
-				e.printStackTrace();
-			}
-
-			player.stop();
-			player.release();
-
-		// if triggered by the cancel button
-		}else{
-			// reset the variable to false
-			IS_TIMER_CANCELED = false;
-
-			// display the "Press Start" text
-			TEXT_SECONDARY.get().setText(R.string.press_start);
+		// if the snackBar is visible, dismiss it
+		if (_snackBar != null){
+			_snackBar.dismiss();
 		}
+
+		// show the secondary textView
+		TEXT_SECONDARY.get().setVisibility(View.VISIBLE);
 	}
 
 
@@ -441,6 +396,52 @@ public class MainActivity extends AppCompatActivity {
 	}
 
 
+	private class NotifyTimeIsUp implements Runnable{
+
+		@Override
+		public void run() {
+
+			// VIBRATE
+			// get the vibrator
+			Vibrator mVibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
+			mVibrator.vibrate(NOTIFICATION_TIME);
+
+
+			// NOTIFICATION
+			Intent intent = new Intent(MainActivity.this, MainActivity.class);
+			PendingIntent pendingIntent = PendingIntent.getActivity(MainActivity.this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+			NotificationCompat.Builder notification =
+					new NotificationCompat.Builder(MainActivity.this)
+							.setSmallIcon(R.drawable.ic_notification_microchrono)
+							.setContentTitle(getResources().getString(R.string.app_name))
+							.setContentText(getString(R.string.notification_text))
+							.setContentIntent(pendingIntent);
+
+			NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+			manager.notify(1, notification.build());
+
+
+			// PLAY SOUND
+			MediaPlayer player = MediaPlayer.create(MainActivity.this,
+					R.raw.kitchen_timer_ringtone);
+			player.setVolume(0.8f, 0.8f);
+			player.start();
+
+			try {
+				Thread.sleep(NOTIFICATION_TIME);
+			} catch (InterruptedException e) {
+				e.printStackTrace();
+			}
+
+			player.stop();
+			player.reset();
+			player.release();
+
+		}
+	}
+
+
 	// the runnable used by the thread
 	private class ChronoMinute implements Runnable {
 
@@ -493,8 +494,8 @@ public class MainActivity extends AppCompatActivity {
 	// the handler (handles communication between threads)
 	private static class mHandler extends Handler {
 
-		String valueToDisplay;
 		float progress;
+		String valueToDisplay;
 
 		@Override
 		public void handleMessage(Message msg) {
@@ -503,11 +504,8 @@ public class MainActivity extends AppCompatActivity {
 			// if the message = -1, stop the timer
 			if (msg.arg1 == -1){
 
-				// say that's not running anymore
-				IS_RUNNING = false;
-
-				// resets the main textView
-				TEXT_TIME.get().setText("");
+				// hide the TextView
+				TEXT_TIME.get().setVisibility(View.INVISIBLE);
 
 				// start the "finishPour" animation
 				LIQUID_BUTTON.get().finishPour();
@@ -542,8 +540,8 @@ public class MainActivity extends AppCompatActivity {
 					// set the main TextView with the value
 					TEXT_TIME.get().setText(valueToDisplay);
 				}else{
-					// otherwise, reset the TextView
-					TEXT_TIME.get().setText("");
+					// otherwise, hide the TextView
+					TEXT_TIME.get().setVisibility(View.INVISIBLE);
 				}
 			}
 		}

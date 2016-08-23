@@ -2,13 +2,14 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
 		  package="net.biospherecorp.microchrono">
 
-	<uses-permission
-		android:name="android.permission.VIBRATE"
-		/>
+	<uses-permission android:name="android.permission.VIBRATE"/>
+	<uses-permission android:name="android.permission.WAKE_LOCK"/>
 
-	<uses-feature
-		android:name="android.permission.VIBRATE"
-		android:required="false"
+	<supports-screens
+		android:smallScreens="true"
+		android:normalScreens="true"
+		android:largeScreens="true"
+		android:xlargeScreens="true"
 		/>
 
 	<application
@@ -19,7 +20,9 @@
 		>
 		<activity
 			android:name=".MainActivity"
-			android:launchMode="singleTop">
+			android:launchMode="singleTop"
+			android:configChanges="orientation|screenSize"
+			>
 
 			<intent-filter>
 				<action android:name="android.intent.action.MAIN"/>

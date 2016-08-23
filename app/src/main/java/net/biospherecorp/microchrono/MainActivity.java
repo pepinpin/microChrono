@@ -2,6 +2,7 @@ package net.biospherecorp.microchrono;
 
 import android.app.NotificationManager;
 import android.app.PendingIntent;
+import android.content.Context;
 import android.content.DialogInterface;
 import android.content.Intent;
 import android.content.pm.ActivityInfo;
@@ -10,6 +11,7 @@ import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
+import android.os.PowerManager;
 import android.os.Vibrator;
 import android.support.design.widget.FloatingActionButton;
 import android.support.design.widget.Snackbar;
@@ -20,6 +22,7 @@ import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.View;
 import android.view.ViewGroup;
+import android.view.WindowManager;
 import android.widget.FrameLayout;
 import android.widget.NumberPicker;
 import android.widget.TextView;
@@ -30,25 +33,21 @@ import java.lang.ref.WeakReference;
 
 public class MainActivity extends AppCompatActivity {
 
-	// this fields need to be static to be usable by the handler
-	//
-	// Putting a class needing the Context in a HardReference static
-	// variable will leak the context, hence the use of a WeakReference
-	private static WeakReference<LiquidButton> LIQUID_BUTTON;
-	private static WeakReference<TextView> TEXT_TIME;
-	private static WeakReference<TextView> TEXT_SECONDARY;
-
 	// the notification Time
 	private static final int NOTIFICATION_TIME = 2500; // in ms
 
 	// the default time for the timer
 	private static final int DEFAULT_TIME_MN = 1;
 
-	// the position of the default time value in the array
-	private static int VALUE_IN_ARRAY_TIME = 3;
+	// this fields need to be static to be usable by the handler
+	//
+	// Putting a class needing the Context in a HardReference static
+	// variable will leak the context, hence the use of a WeakReference
+	private static WeakReference<LiquidButton> LIQUID_BUTTON;
+	private static WeakReference<TextView> TEXT_TIME;
 
 	// set the variable used to count the minutes
-	private static int COUNT_MINUTE = DEFAULT_TIME_MN;
+	private static int COUNT_MINUTE;
 
 	// variable to hold the time in seconds
 	private static float TIME_IN_SEC;
@@ -57,7 +56,15 @@ public class MainActivity extends AppCompatActivity {
 	private static boolean IS_RUNNING = false;
 
 
+	// the wakelock, to keep the app running even if
+	// the device goes to sleep mode
+	private PowerManager.WakeLock _wl;
 
+	// the position of the default time value in the array
+	private int _valueInArrayTime = 3;
+
+	// the secondary textview
+	private TextView _secondaryTextView;
 
 	// has the cancel button been pressed
 	private boolean _isCanceledByUser = false;
@@ -68,8 +75,11 @@ public class MainActivity extends AppCompatActivity {
 	// the floating Action buttons
 	private FloatingActionButton _startButton, _settingButton;
 
+	// the thread ans the handler
 	private Thread _thread;
 	private Handler _handler;
+
+	// the snackBar used when the timer is canceled by the user
 	private Snackbar _snackBar;
 
 	@Override
@@ -82,19 +92,26 @@ public class MainActivity extends AppCompatActivity {
 		// the liquid button on orientation change :/ )
 		setRequestedOrientation(ActivityInfo.SCREEN_ORIENTATION_LOCKED);
 
-		// get the second textView
-		TEXT_SECONDARY = new WeakReference<>((TextView) findViewById(R.id.text_secondary));
+		PowerManager pm = (PowerManager) getSystemService(Context.POWER_SERVICE);
+		_wl = pm.newWakeLock(PowerManager.PARTIAL_WAKE_LOCK, "The WakeLock");
 
 		// get the textView showing the time
 		TEXT_TIME = new WeakReference<>((TextView) findViewById(R.id.text_time));
 
+		// set the time with the default value
+		TEXT_TIME.get().setText(DEFAULT_TIME_MN + " mn");
+
 		// get the liquidButton
 		LIQUID_BUTTON = new WeakReference<>((LiquidButton) MainActivity.this.findViewById(R.id.liquid_time));
 
+		// say that the button stays filled up after the animation is complete
+		LIQUID_BUTTON.get().setFillAfter(true);
 
 
-		// set the time with the default value
-		TEXT_TIME.get().setText(DEFAULT_TIME_MN + " mn");
+		COUNT_MINUTE = DEFAULT_TIME_MN;
+
+		// get the second textView
+		_secondaryTextView = (TextView) findViewById(R.id.text_secondary);
 
 		// get the colors
 		_colorPrimary = getResources().getColor(R.color.colorPrimary);
@@ -117,7 +134,7 @@ public class MainActivity extends AppCompatActivity {
 			public void onClick(View view) {
 				// show the alertDialog &
 				// the number picker
-				showNumberPicker();
+				_showNumberPicker();
 			}
 		});
 
@@ -137,10 +154,17 @@ public class MainActivity extends AppCompatActivity {
 					TIME_IN_SEC = COUNT_MINUTE * 60f;
 
 					// initialize the Buttons
-					initButtons();
+					_initButtons();
 
 					// initialize the TextViews
-					initTextViews();
+					_initTextViews();
+
+					// dim the screen backlight down
+					_lightScreenDown();
+
+					// clear the notifications
+					NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+					manager.cancelAll();
 
 					// start the timer's thread
 					_thread = new Thread(new ChronoMinute());
@@ -157,8 +181,11 @@ public class MainActivity extends AppCompatActivity {
 						_thread.interrupt();
 					}
 
-					// clear the main TextView
-					TEXT_TIME.get().setVisibility(View.INVISIBLE);
+					// turn the screen back light to 80%
+					_lightScreenUp();
+
+					// reset the buttons and textViews to original state
+					_hideButtonsAndTextViews();
 
 					// trigger the "finish pouring" animation
 					LIQUID_BUTTON.get().finishPour();
@@ -178,11 +205,24 @@ public class MainActivity extends AppCompatActivity {
 			@Override
 			public void onPourFinish() { // when the pouring animation is finished
 
-				// resets the buttons state
-				resetButtons();
+				// change the start button background color AND image
+				_startButton.setBackgroundTintList(ColorStateList.valueOf(_colorPrimary));
+				_startButton.setImageResource(android.R.drawable.ic_media_play);
 
-				// reset the UI (textViews & snackBar)
-				resetUI();
+				// if the snackBar is visible, dismiss it
+				if (_snackBar != null){
+					_snackBar.dismiss();
+				}
+
+				// show the description textViews
+				_secondaryTextView.setVisibility(View.VISIBLE);
+
+				// show the buttons
+				_startButton.setVisibility(View.VISIBLE);
+				_settingButton.setVisibility(View.VISIBLE);
+
+				// re enabled the settings button
+				_settingButton.setEnabled(true);
 
 				// it's not running anymore
 				IS_RUNNING = false;
@@ -196,7 +236,7 @@ public class MainActivity extends AppCompatActivity {
 					if (!_isCanceledByUser){
 
 						// Change the textView (cannot be done from the thread)
-						TEXT_SECONDARY.get().setText(R.string.notification_text);
+						_secondaryTextView.setText(R.string.notification_text);
 
 						Thread notifyThread = new Thread(new NotifyTimeIsUp());
 						notifyThread.start();
@@ -207,32 +247,100 @@ public class MainActivity extends AppCompatActivity {
 						_isCanceledByUser = false;
 
 						// display the "Press Start" text
-						TEXT_SECONDARY.get().setText(R.string.press_start);
+						_secondaryTextView.setText(R.string.press_start);
+
+						// turn the screen backlight up
+						_lightScreenUp();
 					}
 				}
 			}
 		});
 	}
 
+	@Override
+	protected void onResume() {
+		super.onPostResume();
 
-	private void initButtons(){
+		// set the flag to avoid the device to go to sleep mode
+		getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+				| WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+
+
+		// set the flag to deal with the lockscreen
+		getWindow().addFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+				| WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
+	}
+
+	@Override
+	protected void onPause() {
+		super.onPause();
+
+		// clear the flag that avoids the device to go to sleep mode
+		getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON
+				| WindowManager.LayoutParams.FLAG_TURN_SCREEN_ON);
+
+
+		// clear the flag that deals with the lockscreen
+		getWindow().clearFlags(WindowManager.LayoutParams.FLAG_SHOW_WHEN_LOCKED
+				| WindowManager.LayoutParams.FLAG_DISMISS_KEYGUARD);
+
+
+		// display a notification indicating the state of the app (... in progress...)
+		//
+		// if timer is running
+		if(IS_RUNNING){
+
+			Intent intent = new Intent(MainActivity.this, MainActivity.class);
+			PendingIntent pendingIntent = PendingIntent.getActivity(MainActivity.this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
+
+			// prepare and display the notification
+			NotificationCompat.Builder notification =
+					new NotificationCompat.Builder(MainActivity.this)
+							.setSmallIcon(R.drawable.ic_notification_microchrono)
+							.setContentTitle(getResources().getString(R.string.app_name))
+							.setContentText(getString(R.string.notification_text))
+							.setContentIntent(pendingIntent)
+							.setAutoCancel(true);
+
+			NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+			manager.notify(1, notification.build());
+		}
+	}
+
+	@Override
+	protected void onDestroy() {
+		super.onDestroy();
+
+		// release the wakelock
+		if (_wl != null && _wl.isHeld()){
+			_wl.release();
+		}
+
+		// interrupt the thread
+		if (_thread != null && !_thread.isInterrupted()){
+			_thread.interrupt();
+		}
+
+		// clear the notifications
+		NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
+		manager.cancelAll();
+	}
+
+
+	private void _initButtons(){
 
 		// change the image and the background color of the _startButton
 		_startButton.setBackgroundTintList(ColorStateList.valueOf(_colorSecondary));
 		_startButton.setImageResource(android.R.drawable.ic_delete);
 
-		// disable the setting button
-		_settingButton.setEnabled(false);
+		// hide the settings button
+		_settingButton.setVisibility(View.INVISIBLE);
 
-		// setup the liquid button
-		//
-		// say that the button stays filled up after the animation is complete
-		LIQUID_BUTTON.get().setFillAfter(true);
 		// start the pouring animation
 		LIQUID_BUTTON.get().startPour();
 	}
 
-	private void initTextViews(){
+	private void _initTextViews(){
 
 		// show the main TextView
 		TEXT_TIME.get().setVisibility(View.VISIBLE);
@@ -240,33 +348,39 @@ public class MainActivity extends AppCompatActivity {
 		TEXT_TIME.get().setText(COUNT_MINUTE + " mn");
 
 		// hide the secondary textView
-		TEXT_SECONDARY.get().setVisibility(View.INVISIBLE);
+		_secondaryTextView.setVisibility(View.INVISIBLE);
 	}
 
-	private void resetButtons(){
+	private void _hideButtonsAndTextViews() {
 
-		// change the start button background color AND image
-		_startButton.setBackgroundTintList(ColorStateList.valueOf(_colorPrimary));
-		_startButton.setImageResource(android.R.drawable.ic_media_play);
+		// hide the main TextView
+		TEXT_TIME.get().setVisibility(View.INVISIBLE);
 
-		// re enabled the settings button
-		_settingButton.setEnabled(true);
+		// hide the description TextView
+		_secondaryTextView.setVisibility(View.INVISIBLE);
+
+		// hide the buttons
+		_startButton.setVisibility(View.INVISIBLE);
+		_settingButton.setVisibility(View.INVISIBLE);
 	}
 
-	private void resetUI(){
+	// turn the screen brightness up
+	private void _lightScreenUp(){
+		WindowManager.LayoutParams layout = getWindow().getAttributes();
+		layout.screenBrightness = -1f;
+		getWindow().setAttributes(layout);
+	}
 
-		// if the snackBar is visible, dismiss it
-		if (_snackBar != null){
-			_snackBar.dismiss();
-		}
-
-		// show the secondary textView
-		TEXT_SECONDARY.get().setVisibility(View.VISIBLE);
+	// dim the screen brightness down
+	private void _lightScreenDown(){
+		WindowManager.LayoutParams layout = getWindow().getAttributes();
+		layout.screenBrightness = 0.2f;
+		getWindow().setAttributes(layout);
 	}
 
 
 	// Displays the alertDialog used by the Settings section
-	private void showNumberPicker(){
+	private void _showNumberPicker(){
 
 		// the array holding the usable values
 		final String[] TIME_ARRAY = new String[102];
@@ -300,7 +414,7 @@ public class MainActivity extends AppCompatActivity {
 		np.setMaxValue(TIME_ARRAY.length -1);
 
 		// some default value
-		np.setValue(VALUE_IN_ARRAY_TIME);
+		np.setValue(_valueInArrayTime);
 
 		// does the wheel wrap around
 		np.setWrapSelectorWheel(true);
@@ -311,10 +425,10 @@ public class MainActivity extends AppCompatActivity {
 			public void onClick(DialogInterface dialogInterface, int i) {
 
 				// store the value chosen (the position in the TIME_ARRAY)
-				VALUE_IN_ARRAY_TIME = np.getValue();
+				_valueInArrayTime = np.getValue();
 
 				// check if it's a egg cooking time
-				switch (VALUE_IN_ARRAY_TIME){
+				switch (_valueInArrayTime){
 					case 0:
 						COUNT_MINUTE = 3;
 						break;
@@ -328,7 +442,7 @@ public class MainActivity extends AppCompatActivity {
 					// if not
 					default:
 						// store the chosen value (the proper value in mn)
-						COUNT_MINUTE = Integer.valueOf(TIME_ARRAY[VALUE_IN_ARRAY_TIME]);
+						COUNT_MINUTE = Integer.valueOf(TIME_ARRAY[_valueInArrayTime]);
 				}
 
 				// display the new value in the main TextView
@@ -401,13 +515,13 @@ public class MainActivity extends AppCompatActivity {
 		@Override
 		public void run() {
 
-			// VIBRATE
+		// VIBRATE
 			// get the vibrator
 			Vibrator mVibrator = (Vibrator) getSystemService(VIBRATOR_SERVICE);
 			mVibrator.vibrate(NOTIFICATION_TIME);
 
 
-			// NOTIFICATION
+		// NOTIFICATION
 			Intent intent = new Intent(MainActivity.this, MainActivity.class);
 			PendingIntent pendingIntent = PendingIntent.getActivity(MainActivity.this, 0, intent, PendingIntent.FLAG_UPDATE_CURRENT);
 
@@ -416,13 +530,14 @@ public class MainActivity extends AppCompatActivity {
 							.setSmallIcon(R.drawable.ic_notification_microchrono)
 							.setContentTitle(getResources().getString(R.string.app_name))
 							.setContentText(getString(R.string.notification_text))
-							.setContentIntent(pendingIntent);
+							.setContentIntent(pendingIntent)
+							.setAutoCancel(true);
 
 			NotificationManager manager = (NotificationManager) getSystemService(NOTIFICATION_SERVICE);
 			manager.notify(1, notification.build());
 
 
-			// PLAY SOUND
+		// PLAY SOUND
 			MediaPlayer player = MediaPlayer.create(MainActivity.this,
 					R.raw.kitchen_timer_ringtone);
 			player.setVolume(0.8f, 0.8f);
@@ -437,7 +552,6 @@ public class MainActivity extends AppCompatActivity {
 			player.stop();
 			player.reset();
 			player.release();
-
 		}
 	}
 
@@ -446,22 +560,24 @@ public class MainActivity extends AppCompatActivity {
 	private class ChronoMinute implements Runnable {
 
 		// store the seconds
-		int seconds = (int)TIME_IN_SEC;
+		private int _seconds = (int)TIME_IN_SEC;
 
 		// the message needed for the inter thread communication
-		Message message;
+		private Message _message;
 
 		@Override
 		public void run() {
+
+			_wl.acquire();
 
 			// while the thread is running
 			while(IS_RUNNING && !_thread.isInterrupted()){
 
 				// decrement the seconds by 1
-				seconds -= 1;
+				_seconds -= 1;
 
 				// get a new message from the pool
-				message = Message.obtain();
+				_message = Message.obtain();
 
 				// debug only
 //				Log.w("seconds : ", ""+ seconds);
@@ -472,20 +588,23 @@ public class MainActivity extends AppCompatActivity {
 					e.printStackTrace();
 				}
 
-				if (seconds > 0){
+				if (_seconds > 0){
 					// send the last value
-					message.arg1 = seconds;
+					_message.arg1 = _seconds;
 				}else{
 					// sends -1 ( means error or end)
-					message.arg1 = -1;
+					_message.arg1 = -1;
 				}
 
 				//send the message
-				_handler.sendMessage(message);
+				_handler.sendMessage(_message);
 			}
 
 			// stop the thread
 			_thread.interrupt();
+
+			// release the wakelock
+			_wl.release();
 		}
 	}
 
@@ -494,8 +613,8 @@ public class MainActivity extends AppCompatActivity {
 	// the handler (handles communication between threads)
 	private static class mHandler extends Handler {
 
-		float progress;
-		String valueToDisplay;
+		private float _progress;
+		private String _valueToDisplay;
 
 		@Override
 		public void handleMessage(Message msg) {
@@ -513,10 +632,10 @@ public class MainActivity extends AppCompatActivity {
 			}else{
 
 				// calculate the progress and store it as a float (1f = 100%)
-				progress = msg.arg1 / TIME_IN_SEC;
+				_progress = msg.arg1 / TIME_IN_SEC;
 
 				// change the progress of the liquidButton
-				LIQUID_BUTTON.get().changeProgress(1 - progress);
+				LIQUID_BUTTON.get().changeProgress(1 - _progress);
 
 				// if the seconds count is > 60
 				if (msg.arg1 > 60){
@@ -529,16 +648,16 @@ public class MainActivity extends AppCompatActivity {
 					}
 
 					// store the value
-					valueToDisplay = COUNT_MINUTE + " mn";
+					_valueToDisplay = COUNT_MINUTE + " mn";
 				}else{
 					// if the seconds count is < 60, store the time in seconds
-					valueToDisplay = msg.arg1 + " s";
+					_valueToDisplay = msg.arg1 + " s";
 				}
 
 				// if the timer is still running (not interrupted)
 				if (IS_RUNNING){
 					// set the main TextView with the value
-					TEXT_TIME.get().setText(valueToDisplay);
+					TEXT_TIME.get().setText(_valueToDisplay);
 				}else{
 					// otherwise, hide the TextView
 					TEXT_TIME.get().setVisibility(View.INVISIBLE);
